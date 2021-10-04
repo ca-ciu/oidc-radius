@@ -1,13 +1,27 @@
 package main
 
 import (
+	"crypto/sha256"
+	"encoding/base64"
+	"fmt"
+	"github.com/go-redis/redis"
 	"github.com/okzk/go-ciba"
 	"layeh.com/radius"
 	"layeh.com/radius/rfc2865"
 	"log"
 	"os"
 	"strings"
+	"time"
 )
+
+func genCacheKey(keys ...string) string {
+	h := sha256.New()
+	for _, k := range keys {
+		h.Write([]byte(k))
+		h.Write([]byte("\n@@@@@@@@@\n"))
+	}
+	return base64.RawURLEncoding.EncodeToString(h.Sum(nil))
+}
 
 func main() {
 	client := ciba.NewClient(
@@ -20,6 +34,13 @@ func main() {
 	)
 	sep := os.Getenv("USERNAME_SEPARATOR")
 	acceptCaseInsensitiveUsername := os.Getenv("ACCEPT_CASE_INSENSITIVE_USERNAME") == "1"
+
+	redisClient := redis.NewClient(&redis.Options{
+		Addr:        fmt.Sprintf("%s:%s", os.Getenv("REDIS_HOST"), os.Getenv("REDIS_PORT")),
+		Password:    os.Getenv("REDIS_PASSWORD"),
+		DialTimeout: time.Millisecond * 300,
+		ReadTimeout: time.Millisecond * 300,
+	})
 
 	accessRequestHandler := func(w radius.ResponseWriter, r *radius.Request) {
 		if r.Code != radius.CodeAccessRequest {
@@ -39,6 +60,13 @@ func main() {
 		}
 		if username == "" || password == "" {
 			w.Write(r.Response(radius.CodeAccessReject))
+			return
+		}
+		cacheKey := genCacheKey(username, password)
+		ret, _ := redisClient.Get(cacheKey).Result()
+		if ret != "" {
+			log.Printf("[INFO] (cache) authn success. user: %s", username)
+			w.Write(r.Response(radius.CodeAccessAccept))
 			return
 		}
 
@@ -66,6 +94,7 @@ func main() {
 			return
 		}
 		log.Printf("[INFO] authn success. user: %s", username)
+		redisClient.Set(cacheKey, "1", 8*time.Hour)
 		w.Write(r.Response(radius.CodeAccessAccept))
 	}
 

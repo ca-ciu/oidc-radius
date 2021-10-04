@@ -1,6 +1,8 @@
 FROM golang AS build-env-golang
 ENV CGO_ENABLED=0
-RUN go get github.com/okzk/oidc-radius
+WORKDIR /go/src/github.com/okzk/oidc-radius
+ADD *.go go.* ./
+RUN go install
 
 
 FROM alpine
@@ -15,6 +17,9 @@ ENV RADIUS_SECRET= \
   CIBA_SCOPE=openid \
   CIBA_CLIENT_ID= \
   CIBA_CLIENT_SECRET= \
+  REDIS_HOST= \
+  REDIS_PORT=6379 \
+  REDIS_PASSWORD= \
   USERNAME_SEPARATOR=
 
 EXPOSE 1812/udp 1813/udp
