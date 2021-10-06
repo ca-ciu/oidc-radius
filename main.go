@@ -75,7 +75,7 @@ func main() {
 		}
 		cacheKey := genCacheKey(username, password)
 		ret, _ := redisClient.Get(cacheKey).Result()
-		if ret != "" {
+		if ret == username {
 			log.Printf("[INFO] (cache) authn success. user: %s", username)
 			w.Write(r.Response(radius.CodeAccessAccept))
 			return
@@ -105,7 +105,7 @@ func main() {
 			return
 		}
 		log.Printf("[INFO] authn success. user: %s", username)
-		redisClient.Set(cacheKey, "1", expiration)
+		redisClient.Set(cacheKey, username, expiration)
 		w.Write(r.Response(radius.CodeAccessAccept))
 	}
 
