@@ -10,6 +10,7 @@ import (
 	"layeh.com/radius/rfc2865"
 	"log"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -34,6 +35,16 @@ func main() {
 	)
 	sep := os.Getenv("USERNAME_SEPARATOR")
 	acceptCaseInsensitiveUsername := os.Getenv("ACCEPT_CASE_INSENSITIVE_USERNAME") == "1"
+
+	expiration := 8 * time.Hour
+	expirationStr := os.Getenv("CACHE_EXPIRATION_SEC")
+	if expirationStr != "" {
+		s, err := strconv.Atoi(expirationStr)
+		if err != nil || s <= 0 {
+			panic("invalid CACHE_EXPIRATION_SEC env")
+		}
+		expiration = time.Duration(s) * time.Second
+	}
 
 	redisClient := redis.NewClient(&redis.Options{
 		Addr:        fmt.Sprintf("%s:%s", os.Getenv("REDIS_HOST"), os.Getenv("REDIS_PORT")),
@@ -94,7 +105,7 @@ func main() {
 			return
 		}
 		log.Printf("[INFO] authn success. user: %s", username)
-		redisClient.Set(cacheKey, "1", 8*time.Hour)
+		redisClient.Set(cacheKey, "1", expiration)
 		w.Write(r.Response(radius.CodeAccessAccept))
 	}
 
