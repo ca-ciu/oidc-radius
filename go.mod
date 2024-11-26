@@ -1,4 +1,4 @@
-module github.com/okzk/oidc-radius
+module github.com/ca-ciu/oidc-radius
 
 go 1.17
 

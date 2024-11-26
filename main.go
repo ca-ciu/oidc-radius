@@ -1,28 +1,20 @@
 package main
 
 import (
-	"crypto/sha256"
-	"encoding/base64"
 	"fmt"
-	"github.com/go-redis/redis"
-	"github.com/okzk/go-ciba"
-	"layeh.com/radius"
-	"layeh.com/radius/rfc2865"
 	"log"
 	"os"
 	"strconv"
 	"strings"
 	"time"
-)
 
-func genCacheKey(keys ...string) string {
-	h := sha256.New()
-	for _, k := range keys {
-		h.Write([]byte(k))
-		h.Write([]byte("\n@@@@@@@@@\n"))
-	}
-	return base64.RawURLEncoding.EncodeToString(h.Sum(nil))
-}
+	radiustls "github.com/ca-ciu/oidc-radius/pkg/radiustls"
+	util "github.com/ca-ciu/oidc-radius/pkg/util"
+	"github.com/go-redis/redis"
+	"github.com/okzk/go-ciba"
+	"layeh.com/radius"
+	"layeh.com/radius/rfc2865"
+)
 
 func main() {
 	client := ciba.NewClient(
@@ -73,7 +65,7 @@ func main() {
 			w.Write(r.Response(radius.CodeAccessReject))
 			return
 		}
-		cacheKey := genCacheKey(username, password)
+		cacheKey := util.GenCacheKey(username, password)
 		ret, _ := redisClient.Get(cacheKey).Result()
 		if ret == username {
 			log.Printf("[INFO] (cache) authn success. user: %s", username)
@@ -117,10 +109,12 @@ func main() {
 	}
 
 	secret := []byte(os.Getenv("RADIUS_SECRET"))
+	radisAccountPort := util.GetEnv("RADIUS_ACCOUNT_PORT", "1813")
 
+	// Radius Accounting
 	go func() {
 		server := radius.PacketServer{
-			Addr:         ":1813",
+			Addr:         ":" + radisAccountPort,
 			Handler:      radius.HandlerFunc(accountingRequestHandler),
 			SecretSource: radius.StaticSecretSource(secret),
 		}
@@ -129,7 +123,13 @@ func main() {
 		}
 	}()
 
+	// Radius TLS
+	go radiustls.RadiusTLS(client, redisClient, secret)
+
+	// Radius Request
+	radisRequestPort := util.GetEnv("RADIUS_REQUEST_PORT", "1812")
 	server := radius.PacketServer{
+		Addr:         ":" + radisRequestPort,
 		Handler:      radius.HandlerFunc(accessRequestHandler),
 		SecretSource: radius.StaticSecretSource(secret),
 	}
