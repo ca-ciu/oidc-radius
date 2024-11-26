@@ -95,6 +95,7 @@ func RadiusTLS(client *ciba.Client, redisClient *redis.Client, secret []byte) {
 	// TLS Certs from ENV
 	radiusTLSCert := util.GetEnv("RADIUS_TLS_CERT", "/etc/radius/cert.pem")
 	radiusTLSKey := util.GetEnv("RADIUS_TLS_KEY", "/etc/radius/key.pem")
+	radiusTLSPort := util.GetEnv("RADIUS_TLS_PORT", "2083")
 
 	go func() {
 		cert, err := tls.LoadX509KeyPair(radiusTLSCert, radiusTLSKey)
@@ -103,7 +104,7 @@ func RadiusTLS(client *ciba.Client, redisClient *redis.Client, secret []byte) {
 		}
 
 		tlsConfig := &tls.Config{Certificates: []tls.Certificate{cert}}
-		listener, err := tls.Listen("tcp", ":2083", tlsConfig)
+		listener, err := tls.Listen("tcp", ":"+radiusTLSPort, tlsConfig)
 		if err != nil {
 			log.Fatalf("failed to start TLS listener: %v", err)
 		}
