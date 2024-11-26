@@ -1,0 +1,35 @@
+name: Build and Push Docker Image
+
+on:
+  push:
+    branches:
+      - feature/tls
+
+jobs:
+  build:
+    runs-on: [self-hosted, myshoes, myshoes_tky02_lxd_large]
+    env:
+      GOPRIVATE: github.com/cycloud-io
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - uses: 'google-github-actions/auth@v2'
+        with:
+          credentials_json: '${{ secrets.GOOGLE_CREDENTIALS }}'
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            asia-northeast1-docker.pkg.dev/cyberagent-001/secumo/oidc-radius
+          tags: |
+            type=sha  
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
