@@ -5,11 +5,13 @@ import (
 	"crypto/tls"
 	"log"
 	"net"
+	"os"
+	"strings"
 	"time"
 
+	ciba "github.com/ca-ciu/oidc-radius/pkg/ciba"
 	util "github.com/ca-ciu/oidc-radius/pkg/util"
 	"github.com/go-redis/redis"
-	"github.com/okzk/go-ciba"
 	"layeh.com/radius"
 	"layeh.com/radius/rfc2865"
 )
@@ -42,8 +44,23 @@ func handleTLSConnection(conn net.Conn, client *ciba.Client, redisClient *redis.
 }
 
 func handleAccessRequest(conn net.Conn, packet *radius.Packet, client *ciba.Client, redisClient *redis.Client) {
+	sep := os.Getenv("USERNAME_SEPARATOR")
+	acceptCaseInsensitiveUsername := os.Getenv("ACCEPT_CASE_INSENSITIVE_USERNAME") == "1"
+
 	username := rfc2865.UserName_GetString(packet)
-	password := rfc2865.UserPassword_GetString(packet)
+	password := ""
+
+	if sep != "" {
+		parts := strings.SplitN(username, sep, 2)
+		if len(parts) == 2 {
+			username = parts[0]
+			password = parts[1]
+		}
+	}
+
+	if password == "" {
+		password = rfc2865.UserPassword_GetString(packet)
+	}
 
 	if username == "" || password == "" {
 		log.Printf("[INFO] invalid request: missing username or password")
@@ -70,6 +87,16 @@ func handleAccessRequest(conn net.Conn, packet *radius.Packet, client *ciba.Clie
 	sub, ok := token.Claims()["sub"].(string)
 	if !ok || sub != username {
 		log.Printf("[INFO] invalid sub claim: expected %s, got %s", username, sub)
+		sendResponse(conn, packet.Response(radius.CodeAccessReject))
+		return
+	}
+	if acceptCaseInsensitiveUsername && !strings.EqualFold(sub, username) {
+		log.Printf("[INFO] authn failed. user: %s, returned_sub: %s", username, sub)
+		sendResponse(conn, packet.Response(radius.CodeAccessReject))
+		return
+	}
+	if !acceptCaseInsensitiveUsername && sub != username {
+		log.Printf("[INFO] authn failed. user: %s, returned_sub: %s", username, sub)
 		sendResponse(conn, packet.Response(radius.CodeAccessReject))
 		return
 	}

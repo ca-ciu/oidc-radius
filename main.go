@@ -8,10 +8,10 @@ import (
 	"strings"
 	"time"
 
+	ciba "github.com/ca-ciu/oidc-radius/pkg/ciba"
 	radiustls "github.com/ca-ciu/oidc-radius/pkg/radiustls"
 	util "github.com/ca-ciu/oidc-radius/pkg/util"
 	"github.com/go-redis/redis"
-	"github.com/okzk/go-ciba"
 	"layeh.com/radius"
 	"layeh.com/radius/rfc2865"
 )
