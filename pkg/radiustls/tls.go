@@ -19,6 +19,9 @@ import (
 func handleTLSConnection(conn net.Conn, client *ciba.Client, redisClient *redis.Client, secret []byte) {
 	defer conn.Close()
 
+	sep := os.Getenv("USERNAME_SEPARATOR")
+	acceptCaseInsensitiveUsername := os.Getenv("ACCEPT_CASE_INSENSITIVE_USERNAME") == "1"
+
 	buffer := make([]byte, 4096)
 	for {
 		n, err := conn.Read(buffer)
@@ -36,17 +39,14 @@ func handleTLSConnection(conn net.Conn, client *ciba.Client, redisClient *redis.
 		}
 
 		if packet.Code == radius.CodeAccessRequest {
-			handleAccessRequest(conn, packet, client, redisClient)
+			handleAccessRequest(conn, packet, client, redisClient, sep, acceptCaseInsensitiveUsername)
 		} else {
 			log.Printf("[ERROR] unsupported RADIUS packet type: %v", packet.Code)
 		}
 	}
 }
 
-func handleAccessRequest(conn net.Conn, packet *radius.Packet, client *ciba.Client, redisClient *redis.Client) {
-	sep := os.Getenv("USERNAME_SEPARATOR")
-	acceptCaseInsensitiveUsername := os.Getenv("ACCEPT_CASE_INSENSITIVE_USERNAME") == "1"
-
+func handleAccessRequest(conn net.Conn, packet *radius.Packet, client *ciba.Client, redisClient *redis.Client, sep string, acceptCaseInsensitiveUsername bool) {
 	username := rfc2865.UserName_GetString(packet)
 	password := ""
 
