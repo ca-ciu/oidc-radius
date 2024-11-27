@@ -118,6 +118,7 @@ func main() {
 			Handler:      radius.HandlerFunc(accountingRequestHandler),
 			SecretSource: radius.StaticSecretSource(secret),
 		}
+		log.Printf("RADIUS accountingRequestHandler start listening on :" + radisAccountPort)
 		if err := server.ListenAndServe(); err != nil {
 			panic(err)
 		}
@@ -133,6 +134,7 @@ func main() {
 		Handler:      radius.HandlerFunc(accessRequestHandler),
 		SecretSource: radius.StaticSecretSource(secret),
 	}
+	log.Printf("RADIUS accessRequestHandler start listening on :" + radisRequestPort)
 	if err := server.ListenAndServe(); err != nil {
 		panic(err)
 	}

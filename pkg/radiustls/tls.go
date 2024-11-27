@@ -110,7 +110,7 @@ func RadiusTLS(client *ciba.Client, redisClient *redis.Client, secret []byte) {
 		}
 		defer listener.Close()
 
-		log.Printf("RADIUS over TLS server listening on :2083")
+		log.Printf("RADIUS over TLS server listening on :" + radiusTLSPort)
 
 		// TLS接続を処理
 		for {

@@ -1,7 +1,7 @@
 FROM golang:1.22 AS build-env-golang
 ENV CGO_ENABLED=0
 WORKDIR /go/github.com/ca-ciu/oidc-radius
-ADD *.go go.* ./
+ADD . ./
 RUN go install
 
 FROM alpine
