@@ -85,8 +85,8 @@ func handleAccessRequest(conn net.Conn, packet *radius.Packet, client *ciba.Clie
 	}
 
 	sub, ok := token.Claims()["sub"].(string)
-	if !ok || sub != username {
-		log.Printf("[INFO] invalid sub claim: expected %s, got %s", username, sub)
+	if !ok {
+		log.Printf("[INFO] Failed to get subject from token")
 		sendResponse(conn, packet.Response(radius.CodeAccessReject))
 		return
 	}
